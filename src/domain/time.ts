@@ -29,3 +29,40 @@ export function minutesToTime(minutes: number): string {
   const mins = minutes % 60;
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
 }
+
+/**
+ * Генерирует массив временных меток с заданным шагом.
+ * По умолчанию от "09:00" до "18:00" с шагом 30 минут:
+ * ["09:00", "09:30", "10:00", ..., "17:30", "18:00"]
+ */
+export function generateTimeSlots(
+  start: string = WORK_DAY_START,
+  end: string = WORK_DAY_END,
+  stepMinutes: number = SLOT_STEP_MINUTES
+): string[] {
+  const startMins = timeToMinutes(start);
+  const endMins = timeToMinutes(end);
+
+  if (startMins > endMins) {
+    throw new Error(`Время начала (${start}) не может быть позже окончания (${end}).`);
+  }
+  if (stepMinutes <= 0) {
+    throw new Error('Шаг генерации слотов должен быть больше 0 минут.');
+  }
+
+  const slots: string[] = [];
+  for (let current = startMins; current <= endMins; current += stepMinutes) {
+    slots.push(minutesToTime(current));
+  }
+  return slots;
+}
+
+/**
+ * Форматирует переданную дату в локальный формат YYYY-MM-DD (без сдвигов UTC).
+ */
+export function formatDateIso(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}

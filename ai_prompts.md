@@ -68,3 +68,34 @@
 7. **Проверь работоспособность:**
    В `src/App.tsx` выведи простую проверку: кнопку «Проверить API броней», которая делает `fetch('/api/bookings?date=' + сегодняшняя_дата)` и выводит список броней в консоль или на экран.
 Убедись, что проект собирается без ошибок TypeScript (`bun run build`).
+
+---
+
+## Prompt 2: Генерация сетки слотов времени и юнит-тесты для time.ts
+
+В модуле `src/domain/time.ts` уже реализованы базовые константы рабочего дня и утилиты конвертации:
+- `isValidTimeFormat(time: string): boolean`
+- `timeToMinutes(time: string): number`
+- `minutesToTime(minutes: number): string`
+
+### Задачи:
+1. **Реализовать функцию генерации слотов в `src/domain/time.ts`:**
+   - На основе существующих `timeToMinutes` и `minutesToTime` реализовать функцию:
+     ```typescript
+     export function generateTimeSlots(
+       start: string = WORK_DAY_START,
+       end: string = WORK_DAY_END,
+       stepMinutes: number = SLOT_STEP_MINUTES
+     ): string[]
+     ```
+   - Функция должна возвращать массив строк `HH:mm` от `start` до `end` включительно с шагом `stepMinutes` (по умолчанию: `['09:00', '09:30', ..., '17:30', '18:00']`).
+   - Валидировать, что `start <= end` и `stepMinutes > 0`, иначе выбрасывать ошибку с понятным сообщением.
+   - Экспортировать утилиту `formatDateIso(date: Date): string` для локального форматирования `YYYY-MM-DD`.
+
+2. **Покрыть модуль `src/domain/time.ts` юнит-тестами на Vitest (`src/domain/__tests__/time.test.ts`):**
+   - Проверить валидацию формата `isValidTimeFormat` (валидные и невалидные строки, пустые значения).
+   - Проверить перевод `timeToMinutes` и обратно `minutesToTime` на граничных значениях (`00:00`, `09:00`, `18:00`, `23:59`) и обработку некорректного ввода.
+   - Проверить `generateTimeSlots` (правильное количество слотов для рабочего дня 09:00–18:00 с шагом 30 мин, поддержка кастомных диапазонов).
+   - Проверить форматирование `formatDateIso`.
+
+Убедись, что все тесты проходят (`bun run test`) и сборка не ломается (`bun run build`).
