@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 
 export type DateSelectorViewProps = {
   formattedDate: string;
+  relativeDateLabel: string;
   isToday: boolean;
   rawDate: string;
   onPrevDay: () => void;
@@ -14,6 +15,7 @@ export type DateSelectorViewProps = {
 
 export const DateSelectorView: React.FC<DateSelectorViewProps> = ({
   formattedDate,
+  relativeDateLabel,
   isToday,
   rawDate,
   onPrevDay,
@@ -65,14 +67,15 @@ export const DateSelectorView: React.FC<DateSelectorViewProps> = ({
           variant={isToday ? 'default' : 'secondary'}
           size="sm"
           onClick={onToday}
-          aria-label="Перейти на сегодняшний день"
-          className={`h-9 px-3.5 rounded-lg text-xs font-semibold cursor-pointer ${
+          title={isToday ? 'Сегодня' : 'Нажмите, чтобы вернуться к Сегодня'}
+          aria-label={`Выбранная дата: ${relativeDateLabel}. Нажмите для возврата к сегодняшнему дню`}
+          className={`h-9 min-w-[5.5rem] px-3.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
             isToday
               ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'
-              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700'
           }`}
         >
-          Сегодня
+          {relativeDateLabel}
         </Button>
 
         <Button
