@@ -1,75 +1,127 @@
-# React + TypeScript + Vite
+# Интерфейс бронирования переговорной комнаты
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Тестовое задание для компании **Mad Devs**.  
+Реализация интерактивного интерфейса бронирования переговорной комнаты в течение рабочего дня (09:00–18:00) с соблюдением бизнес-правил, обработкой серверных конфликтов (`409 Conflict`), доступностью (a11y) и архитектурой FSD (Container / View).
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Ссылки
 
-## React Compiler
+- **Deployed Demo:** _[Ссылка будет добавлена после деплоя]_
+- **Репозиторий:** [https://github.com/StandaFrontMan/mad-devs-test](https://github.com/StandaFrontMan/mad-devs-test)
+- **История декларативных промптов (AI Prompts):** [ai_prompts.md](./ai_prompts.md)
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+---
 
-Note: This will impact Vite dev & build performances.
+## Стек технологий
 
-## Expanding the ESLint configuration
+- **Фреймворк и сборщик:** [React 19](https://react.dev/), [Vite](https://vitejs.dev/), [TypeScript](https://www.typescriptlang.org/)
+- **Пакетный менеджер:** [Bun](https://bun.sh/) (также полностью совместим с npm/pnpm/yarn)
+- **Стилизация:** [Tailwind CSS v4](https://tailwindcss.com/), шрифт [Geist](https://vercel.com/font), иконки [Lucide React](https://lucide.dev/)
+- **Сетевой мок-сервер:** [MSW v2 / v3 (Mock Service Worker)](https://mswjs.io/) через Service Worker в браузере
+- **Тестирование:** [Vitest](https://vitest.dev/) (33 юнит-теста на бизнес-логику, время и API)
+- **Архитектурный паттерн:** [Feature-Sliced Design (FSD)](https://feature-sliced.design/) + **Container / View**
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Архитектурные решения
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### 1. Доменный слой (Domain-Driven Design)
+Вся бизнес-логика вынесена в изолированный слой `src/domain/`, не зависящий от React, UI-компонентов и браузерного окружения:
+- **Время как минуты от полуночи:** Внутри расчетов и алгоритмов время представлено в минутах от 00:00 (`09:00` -> `540`, `18:00` -> `1080`). Строки формата `HH:mm` используются исключительно на границах ввода (формы и API). Это исключает проблемы со сдвигами таймзон и объектами `Date`.
+- **Детерминированность:** Текущее время передается в правила параметром `now: Date = new Date()`, что гарантирует 100% стабильность и воспроизводимость юнит-тестов проверки прошедших дат и слотов.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 2. Паттерн Container / View & FSD
+Компоненты разделены на два типа:
+- **Container (`*Container.tsx`):** отвечает за состояние, хуки, вызовы сетевого API, расчет занятости слотов и сайд-эффекты. Не содержит визуальных классов верстки.
+- **View (`*View.tsx`):** чистый презентационный («глупый») компонент. Принимает чистые пропсы, отвечает за адаптивную верстку, контрастность, состояния hover/focus и атрибуты доступности (`aria-label`, `role="region"`, `aria-disabled`).
+
+### 3. Изоляция сетевого слоя и честный Mock API на MSW
+- Сетевой слой (`src/api/client.ts` и `src/api/bookings.ts`) написан на чистом `fetch` и типизированном классе `ApiError`. Приложение ничего не знает о том, как реализован бэкенд. При подключении реального сервера достаточно изменить `endpoint` в одном месте.
+- MSW перехватывает запросы на уровне Service Worker в браузере. В DevTools вкладки Network видны реальные HTTP-запросы `200`, `201`, `204`, `400` и `409 Conflict` с сетевой задержкой 250 мс.
+- Состояние сохраняется в `sessionStorage`, поэтому данные не сбрасываются при перезагрузке страницы.
+
+---
+
+## Реализация бизнес-правил (8 пунктов ТЗ)
+
+| № | Бизнес-правило | Реализация в коде | Статус |
+|---|---|---|:---:|
+| 1 | Время начала и окончания — в пределах рабочего дня (09:00–18:00) | `isWithinWorkDay(start, end)` |  |
+| 2 | `start < end` | `isStartBeforeEnd(start, end)` |  |
+| 3 | Минимальная длительность — 30 минут | `isValidDuration(start, end)` |  |
+| 4 | Максимальная длительность — 2 часа (120 минут) | `isValidDuration(start, end)` |  |
+| 5 | Бронирования не могут пересекаться (касание границ `10:00–11:00` и `11:00–12:00` допустимо) | `hasOverlap(a, b)`: `a.start < b.end && b.start < a.end` |  |
+| 6 | Нельзя бронировать прошедшее время (для прошедших дат и прошедших слотов сегодня) | `isPastBooking(date, start, now)` |  |
+| 7 | При редактировании текущая бронь не конфликтует сама с собой | `findConflictingBookings(..., excludeBookingId)` |  |
+| 8 | Серверный конфликт `409 Conflict` обрабатывается без потери данных формы | `handleFormSubmit` перехватывает `ApiError (status: 409)` |  |
+
+---
+
+## Обработка серверных конфликтов (Пункт 8 ТЗ)
+
+Серверная валидация продублирована на стороне мок-сервера в `src/mocks/handlers.ts`. Даже если UI посчитал слот свободным (например, при race condition или параллельном бронировании коллегой):
+1. Модальное окно **НЕ закрывается**.
+2. Введённая тема встречи и выбранное время **НЕ сбрасываются**.
+3. В форме выводится предупреждение об ошибке:  
+   > *«Выбранное время уже занято другим бронированием. Список бронирований на странице обновлен, пожалуйста, выберите другой интервал.»*
+4. Фоном вызывается `refetch()`, и конфликтующий слот немедленно появляется на таймлайне.
+
+### Демо-фича для рецензента:
+В шапке приложения добавлена специальная кнопка **«⚡ Симулировать конфликт (409)»**. При нажатии она тайно добавляет бронь в базу в обход UI и открывает форму на это же время. При нажатии «Забронировать» вы сможете лично убедиться в корректной отработке сценария 409 ошибки.
+
+---
+
+## Запуск проекта
+
+### 1. Установка зависимостей
+```bash
+bun install
+# или
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 2. Запуск в режиме разработки
+```bash
+bun run dev
+# или
+npm run dev
 ```
+Приложение откроется по адресу `http://localhost:5173`. В консоли браузера появится сообщение `[MSW] Mocking enabled.`
+
+### 3. Запуск юнит-тестов (Vitest)
+```bash
+bun run test
+# или
+npm run test
+```
+В проекте реализовано **33 юнит-теста** (покрытие правил времени, граничных условий, пересечений и сетевого слоя).
+
+### 4. Сборка production bundle
+```bash
+bun run build
+# или
+npm run build
+```
+
+---
+
+## Таймбокс и затраченное время
+
+Ориентировочное общее время выполнения: **~4.5 часа**.
+
+- **Этап 0 (~45 мин):** Инициализация проекта, Tailwind CSS v4, shadcn UI, настройка MSW v2/v3 и персистентного `sessionStorage` хранилища.
+- **Этап 1 (~50 мин):** Реализация чистого доменного слоя (`time.ts`, `rules.ts`) и написание 28 юнит-тестов на Vitest для всех 8 правил ТЗ.
+- **Этап 2 (~30 мин):** Сетевой клиент (`client.ts`, `bookings.ts`), интеграция валидации в хэндлеры MSW (статусы 409 и 400), юнит-тесты сетевого слоя.
+- **Этап 3 (~55 мин):** UI таймлайна слотов дня (09:00–18:00), выбор даты с относительными бейджами («Вчера», «Сегодня», «Завтра»), индикатор линии текущего времени «Сейчас».
+- **Этап 4 (~45 мин):** Модальные окна бронирования/редактирования, подтверждение удаления, реализация сценария обработки 409 ошибки без потери данных, демо-кнопка конфликта.
+- **Этап 5 (~15 мин):** Исправление багов, полировка стилей, документация README.md.
+
+---
+
+## Что можно улучшить при расширении скоупа
+
+1. **Мульти-румность:** добавление переключателя между несколькими переговорными комнатами с индивидуальной вместимостью и оснащением (ТВ, маркерная доска).
+2. **Аутентификация пользователей:** разграничение прав доступа (редактировать/удалять бронь может только её создатель или администратор).
+3. **Рекуррентные встречи:** бронирование слота на несколько недель вперед (например, каждый понедельник в 11:00).
+4. **WebSocket/SSE уведомления:** мгновенное обновление таймлайна в реальном времени при создании броней другими коллегами.
