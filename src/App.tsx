@@ -1,11 +1,7 @@
-import './App.css'
+import { BookingsPageContainer } from './features/bookings/ui/BookingsPage/BookingsPageContainer';
 
-function App() {
-  return (
-    <>
-     <div className='text-red-400'>test</div>
-    </>
-  )
+export function App() {
+  return <BookingsPageContainer />;
 }
 
-export default App
+export default App;
