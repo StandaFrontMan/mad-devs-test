@@ -5,3 +5,8 @@ export const MIN_DURATION_MINUTES = 30;
 export const MAX_DURATION_MINUTES = 120;
 
 const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+// проверка строчки на формат hh mm
+export function isValidTimeFormat(time: string): boolean {
+  return TIME_REGEX.test(time);
+}
