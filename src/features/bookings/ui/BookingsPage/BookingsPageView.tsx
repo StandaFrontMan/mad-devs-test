@@ -1,21 +1,40 @@
 import React from 'react';
-import { Plus, AlertCircle, RefreshCw, Sparkles, Building2 } from 'lucide-react';
+import { Plus, AlertCircle, RefreshCw, Sparkles, Building2, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DateSelectorContainer } from '../DateSelector/DateSelectorContainer';
 import { TimelineContainer } from '../Timeline/TimelineContainer';
-import type { Booking } from '@/domain/booking';
+import { BookingFormModalContainer } from '../BookingFormModal/BookingFormModalContainer';
+import { DeleteBookingModalContainer } from '../DeleteBookingModal/DeleteBookingModalContainer';
+import type { Booking, CreateBookingDto } from '@/domain/booking';
 
 export type BookingsPageViewProps = {
   selectedDate: string;
   bookings: Booking[];
   isLoading: boolean;
   error: string | null;
+  formModalState: {
+    isOpen: boolean;
+    mode: 'create' | 'edit';
+    initialData?: Partial<Booking>;
+  };
+  deleteModalState: {
+    isOpen: boolean;
+    booking: Booking | null;
+  };
+  isSubmitting: boolean;
+  isDeleting: boolean;
+  serverError: string | null;
   onDateChange: (date: string) => void;
   onRefresh: () => void;
   onCreateBookingClick: () => void;
   onSelectSlot: (startTime: string) => void;
   onEditBooking: (booking: Booking) => void;
   onDeleteBooking: (booking: Booking) => void;
+  onFormSubmit: (data: CreateBookingDto) => void;
+  onCloseFormModal: () => void;
+  onConfirmDelete: (booking: Booking) => void;
+  onCloseDeleteModal: () => void;
+  onSimulateConflict: () => void;
 };
 
 export const BookingsPageView: React.FC<BookingsPageViewProps> = ({
@@ -23,12 +42,22 @@ export const BookingsPageView: React.FC<BookingsPageViewProps> = ({
   bookings,
   isLoading,
   error,
+  formModalState,
+  deleteModalState,
+  isSubmitting,
+  isDeleting,
+  serverError,
   onDateChange,
   onRefresh,
   onCreateBookingClick,
   onSelectSlot,
   onEditBooking,
   onDeleteBooking,
+  onFormSubmit,
+  onCloseFormModal,
+  onConfirmDelete,
+  onCloseDeleteModal,
+  onSimulateConflict,
 }) => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#090d16] text-slate-900 dark:text-slate-100 antialiased flex flex-col">
@@ -50,6 +79,18 @@ export const BookingsPageView: React.FC<BookingsPageViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Кнопка симуляции фонового конфликта для рецензента */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onSimulateConflict}
+              title="Создает бронь в базе в обход UI для проверки обработки ошибки 409 Conflict"
+              className="hidden md:inline-flex gap-1.5 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300 font-medium cursor-pointer"
+            >
+              <Zap className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+              <span>Симулировать конфликт (409)</span>
+            </Button>
+
             <Button
               onClick={onCreateBookingClick}
               size="sm"
@@ -133,6 +174,27 @@ export const BookingsPageView: React.FC<BookingsPageViewProps> = ({
           </>
         )}
       </main>
+
+      {/* Модальное окно создания / редактирования */}
+      <BookingFormModalContainer
+        isOpen={formModalState.isOpen}
+        mode={formModalState.mode}
+        date={selectedDate}
+        initialData={formModalState.initialData}
+        serverError={serverError}
+        isSubmitting={isSubmitting}
+        onClose={onCloseFormModal}
+        onSubmit={onFormSubmit}
+      />
+
+      {/* Диалог подтверждения удаления */}
+      <DeleteBookingModalContainer
+        isOpen={deleteModalState.isOpen}
+        booking={deleteModalState.booking}
+        isDeleting={isDeleting}
+        onClose={onCloseDeleteModal}
+        onConfirm={onConfirmDelete}
+      />
     </div>
   );
 };
