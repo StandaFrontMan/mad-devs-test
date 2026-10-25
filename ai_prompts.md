@@ -140,3 +140,37 @@
    - Итоговая функция `validateBooking`.
 
 Убедись, что все тесты проходят (`bun run test`) и сборка не ломается (`bun run build`).
+
+---
+
+## Prompt 4: Сетевой слой API и интеграция серверной валидации (409 Conflict)
+
+Необходимо полностью отделить сетевой слой от UI-компонентов и внедрить серверную валидацию бизнес-правил в моковый сервер MSW.
+
+### Задачи:
+1. **Создать типизированный HTTP-клиент (`src/api/client.ts`):**
+   - Реализовать класс ошибки `ApiError extends Error` со свойствами:
+     - `status: number` (HTTP статус, например 400, 404, 409)
+     - `code?: string` ('CONFLICT' | 'VALIDATION_ERROR' | 'PAST_TIME' | 'NOT_FOUND')
+     - `conflictingBookings?: Booking[]` (список конфликтующих броней при 409)
+   - Реализовать универсальный метод `request<T>(endpoint: string, options?: RequestInit): Promise<T>`, парсящий JSON и выбрасывающий `ApiError` при `!res.ok`.
+
+2. **Создать сервисный модуль бронирований (`src/api/bookings.ts`):**
+   - `getBookings(date: string): Promise<Booking[]>`
+   - `createBooking(dto: CreateBookingDto): Promise<Booking>`
+   - `updateBooking(id: string, dto: UpdateBookingDto): Promise<Booking>`
+   - `deleteBooking(id: string): Promise<void>`
+
+3. **Интегрировать бизнес-валидацию в MSW хэндлеры (`src/mocks/handlers.ts`):**
+   - В `POST /api/bookings` и `PATCH /api/bookings/:id` вызывать `validateBooking` с существующими бронированиями из `bookingDb`.
+   - Если результат невалиден:
+     - При `CONFLICT`: возвращать статус **409 Conflict** с телом `{ code: 'CONFLICT', message: '...', conflictingBookings: [...] }`.
+     - При `PAST_TIME` или `VALIDATION_ERROR`: возвращать статус **400 Bad Request** с описанием ошибки.
+   - При успехе продолжать создание или обновление в `bookingDb`.
+
+4. **Покрыть сетевой слой юнит-тестами (`src/api/__tests__/bookings.test.ts`):**
+   - Проверить успешные запросы CRUD.
+   - Проверить перехват и разбор `ApiError` при статусе 409 Conflict.
+   - Проверить удаление со статусом 204.
+
+Убедись, что все тесты проходят (`bun run test`) и сборка не ломается (`bun run build`).

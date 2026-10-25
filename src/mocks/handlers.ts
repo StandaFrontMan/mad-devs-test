@@ -1,6 +1,7 @@
 import { http, HttpResponse, delay } from 'msw';
 import { bookingDb } from './db';
-import type { CreateBookingDto, UpdateBookingDto, ApiErrorResponse } from '@/domain/booking';
+import { validateBooking } from '@/domain/rules';
+import type { CreateBookingDto, UpdateBookingDto, ApiErrorResponse, Booking } from '@/domain/booking';
 
 export const handlers = [
   // GET /api/bookings?date=YYYY-MM-DD
@@ -36,6 +37,27 @@ export const handlers = [
       return HttpResponse.json(error, { status: 400 });
     }
 
+    // Серверная валидация бизнес-правил
+    const existing = bookingDb.getByDate(body.date);
+    const validation = validateBooking(body, existing);
+
+    if (!validation.isValid) {
+      if (validation.code === 'CONFLICT') {
+        const error: ApiErrorResponse = {
+          code: 'CONFLICT',
+          message: validation.errors[0] || 'Выбранное время уже занято.',
+          conflictingBookings: validation.conflictingBookings,
+        };
+        return HttpResponse.json(error, { status: 409 });
+      }
+
+      const error: ApiErrorResponse = {
+        code: validation.code || 'VALIDATION_ERROR',
+        message: validation.errors[0] || 'Ошибка валидации данных бронирования.',
+      };
+      return HttpResponse.json(error, { status: 400 });
+    }
+
     const created = bookingDb.create(body);
     return HttpResponse.json(created, { status: 201 });
   }),
@@ -52,10 +74,8 @@ export const handlers = [
       );
     }
 
-    const body = (await request.json()) as UpdateBookingDto;
-    const updated = bookingDb.update(id, body);
-
-    if (!updated) {
+    const current = bookingDb.getById(id);
+    if (!current) {
       const error: ApiErrorResponse = {
         code: 'NOT_FOUND',
         message: `Бронирование с id "${id}" не найдено.`,
@@ -63,6 +83,35 @@ export const handlers = [
       return HttpResponse.json(error, { status: 404 });
     }
 
+    const body = (await request.json()) as UpdateBookingDto;
+    const mergedCandidate: Booking = {
+      ...current,
+      ...body,
+      id: current.id,
+    };
+
+    // Серверная валидация с исключением текущей брони по id
+    const existing = bookingDb.getByDate(mergedCandidate.date);
+    const validation = validateBooking(mergedCandidate, existing, { excludeBookingId: id });
+
+    if (!validation.isValid) {
+      if (validation.code === 'CONFLICT') {
+        const error: ApiErrorResponse = {
+          code: 'CONFLICT',
+          message: validation.errors[0] || 'Выбранное время уже занято.',
+          conflictingBookings: validation.conflictingBookings,
+        };
+        return HttpResponse.json(error, { status: 409 });
+      }
+
+      const error: ApiErrorResponse = {
+        code: validation.code || 'VALIDATION_ERROR',
+        message: validation.errors[0] || 'Ошибка валидации данных бронирования.',
+      };
+      return HttpResponse.json(error, { status: 400 });
+    }
+
+    const updated = bookingDb.update(id, body);
     return HttpResponse.json(updated, { status: 200 });
   }),
 

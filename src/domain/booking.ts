@@ -10,7 +10,7 @@ export type CreateBookingDto = Omit<Booking, 'id'>;
 export type UpdateBookingDto = Partial<CreateBookingDto>;
 
 export type ApiErrorResponse = {
-  code: 'CONFLICT' | 'VALIDATION_ERROR' | 'NOT_FOUND' | 'BAD_REQUEST';
+  code: 'CONFLICT' | 'VALIDATION_ERROR' | 'NOT_FOUND' | 'BAD_REQUEST' | 'PAST_TIME';
   message: string;
   conflictingBookings?: Booking[];
 };
